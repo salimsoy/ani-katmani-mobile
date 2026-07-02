@@ -1,50 +1,54 @@
-# Welcome to your Expo app 👋
+# Anı Katmanı 3D — Mobil Uygulama
 
-This is an [Expo](https://expo.dev) project created with [`create-expo-app`](https://www.npmjs.com/package/create-expo-app).
+3D baskı figürin e-ticaret uygulaması. React Native (Expo) ile geliştirildi, [backend API](https://github.com/salimsoy/ani-katmani-backend) ile çalışır.
 
-## Get started
+## Teknolojiler
 
-1. Install dependencies
+- **React Native (Expo)** — Expo Router ile dosya tabanlı routing
+- **TypeScript**
+- **expo-secure-store** — JWT token güvenli saklama
+- **AsyncStorage** — misafir sepeti (local cart)
 
-   ```bash
-   npm install
-   ```
+## Özellikler
 
-2. Start the app
+- **Kimlik doğrulama:** Kayıt, giriş, çıkış — JWT tabanlı
+- **Misafir modu:** Login olmadan gezinme ve sepete ekleme (local storage), login olunca sepet otomatik senkronize edilir
+- **Ürün listeleme:** Arama, filament tipine göre filtreleme, 2 sütunlu grid görünüm
+- **Ürün detayı:** Adet seçici, favori ekleme, sabit alt "Sepete Ekle" barı
+- **Sepet:** Adet güncelleme, ürün silme, sipariş özeti
+- **Checkout:** Ayrı teslimat bilgileri sayfası
+- **Sipariş geçmişi:** Durum takibi (Beklemede / Hazırlanıyor / Kargoda / Teslim Edildi)
+- **Favoriler:** Ürünleri favorilere ekleme/çıkarma
+- **Admin paneli:** Ürün ekleme/düzenleme/silme, sipariş durumu yönetimi (rol tabanlı erişim)
 
-   ```bash
-   npx expo start
-   ```
+## Ekran Yapısı
 
-In the output, you'll find options to open the app in a
+app/
+├── (tabs)/
+│   ├── index.tsx      — ana sayfa, ürün listesi
+│   ├── cart.tsx        — sepet
+│   └── profile.tsx     — profil, menü
+├── [id].tsx             — ürün detayı
+├── login.tsx / register.tsx
+├── checkout.tsx         — teslimat bilgileri
+├── orders.tsx            — sipariş geçmişi
+├── favorites.tsx         — favori ürünler
+├── admin.tsx              — ürün yönetimi
+└── admin-orders.tsx       — sipariş yönetimi
 
-- [development build](https://docs.expo.dev/develop/development-builds/introduction/)
-- [Android emulator](https://docs.expo.dev/workflow/android-studio-emulator/)
-- [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
-- [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
-
-You can start developing by editing the files inside the **app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
-
-## Get a fresh project
-
-When you're ready, run:
+## Kurulum
 
 ```bash
-npm run reset-project
+npm install
+
+# Backend URL'ini utils/api.ts içinde güncelle
+# const BASE_URL = 'http://<kendi-ip-adresin>:5059';
+
+npx expo start --lan
 ```
 
-This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
+## Mimari Notları
 
-## Learn more
-
-To learn more about developing your project with Expo, look at the following resources:
-
-- [Expo documentation](https://docs.expo.dev/): Learn fundamentals, or go into advanced topics with our [guides](https://docs.expo.dev/guides).
-- [Learn Expo tutorial](https://docs.expo.dev/tutorial/introduction/): Follow a step-by-step tutorial where you'll create a project that runs on Android, iOS, and the web.
-
-## Join the community
-
-Join our community of developers creating universal apps.
-
-- [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
-- [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
+- Tüm API istekleri `utils/api.ts` içindeki `apiFetch` fonksiyonu üzerinden geçer — token varsa otomatik `Authorization` header'ı eklenir
+- Misafir sepeti `utils/cart.ts` ile AsyncStorage'da tutulur, login olunca backend'e merge edilir
+- Rol tabanlı erişim: admin ekranları backend'den dönen `isAdmin` bilgisine göre koşullu render edilir
