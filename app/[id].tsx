@@ -210,6 +210,7 @@ export default function FigurineDetail() {
         <View>
           <Text style={styles.bottomBarLabel}>Toplam</Text>
           <Text style={styles.bottomBarPrice}>{(figurine.price * quantity).toFixed(2)} ₺</Text>
+          <Text style={styles.bottomBarCalc}>{quantity} x {figurine.price} ₺</Text>
         </View>
         <TouchableOpacity style={styles.button} activeOpacity={0.8} onPress={addToCart}>
           <Text style={styles.buttonText}>Sepete Ekle</Text>
@@ -308,4 +309,5 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   buttonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
+  bottomBarCalc: { fontSize: 11, color: '#bbb', marginTop: 2 },
 });

@@ -6,6 +6,7 @@ import 'react-native-reanimated';
 import * as SecureStore from 'expo-secure-store';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
 
 export const unstable_settings = {
   anchor: '(tabs)',
@@ -28,6 +29,7 @@ export default function RootLayout() {
   }, []);
 
   return (
+    <GestureHandlerRootView style={{ flex: 1 }}>
     <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
       <Stack>
         <Stack.Screen name="(tabs)" options={{ headerShown: false, gestureEnabled: false }} />
@@ -56,16 +58,10 @@ export default function RootLayout() {
           headerTintColor: '#ff6600',
           headerTitleStyle: { fontWeight: '700' }
         }} />
-        <Stack.Screen name="favorites" options={{
-          title: 'Favorilerim',
-          headerShown: true,
-          headerBackTitle: 'Profil',
-          headerTintColor: '#ff6600',
-          headerTitleStyle: { fontWeight: '700' }
-        }} />
       </Stack>
       
       <StatusBar style="auto" />
     </ThemeProvider>
+    </GestureHandlerRootView>
   );
 }

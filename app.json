@@ -39,7 +39,13 @@
           }
         }
       ],
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Uygulamanın ürün fotoğrafı yüklemek için galerinize erişmesine izin verin."
+        }
+      ]
     ],
     "experiments": {
       "typedRoutes": true,

@@ -57,16 +57,20 @@ export default function FavoritesScreen() {
 
   if (favorites.length === 0) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyEmoji}>🤍</Text>
-        <Text style={styles.emptyText}>Henüz favori ürününüz yok</Text>
-        <Text style={styles.emptySubText}>Beğendiğiniz ürünlere kalp ikonuna dokunun</Text>
+      <View style={styles.container}>
+        <Text style={styles.pageTitle}>Favorilerim</Text>
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>🤍</Text>
+          <Text style={styles.emptyText}>Henüz favori ürününüz yok</Text>
+          <Text style={styles.emptySubText}>Beğendiğiniz ürünlere kalp ikonuna dokunun</Text>
+        </View>
       </View>
     );
   }
 
   return (
     <View style={styles.container}>
+      <Text style={styles.pageTitle}>Favorilerim</Text>
       <FlatList
         data={favorites}
         keyExtractor={item => item.id.toString()}
@@ -101,8 +105,8 @@ export default function FavoritesScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#f8f9fa', paddingHorizontal: 20, paddingTop: 16 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', paddingHorizontal: 40 },
+  container: { flex: 1, backgroundColor: '#f8f9fa', paddingHorizontal: 20, paddingTop: 60 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', paddingHorizontal: 40, paddingTop: 60 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 6 },
   emptySubText: { fontSize: 14, color: '#999', textAlign: 'center' },
@@ -120,4 +124,5 @@ const styles = StyleSheet.create({
   meta: { fontSize: 12, color: '#999' },
   removeButton: { padding: 8 },
   removeIcon: { fontSize: 20 },
+  pageTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a', marginBottom: 16 },
 });

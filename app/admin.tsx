@@ -5,6 +5,8 @@ import {
 } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { apiFetch } from '@/utils/api';
+import * as ImagePicker from 'expo-image-picker';
+import { Image } from 'react-native';
 
 type Figurine = {
   id: number;
@@ -27,6 +29,7 @@ export default function AdminScreen() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const router = useRouter();
+  const [uploading, setUploading] = useState(false);
 
   useFocusEffect(
     useCallback(() => {
@@ -62,6 +65,55 @@ export default function AdminScreen() {
       imageUrl: item.imageUrl || ''
     });
     setModalVisible(true);
+  };
+  const pickAndUploadImage = async () => {
+    const permissionResult = await ImagePicker.requestMediaLibraryPermissionsAsync();
+
+    if (!permissionResult.granted) {
+      Alert.alert('İzin Gerekli', 'Fotoğraf seçebilmek için galeri izni vermeniz gerekiyor.');
+      return;
+    }
+
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ['images'],
+      allowsEditing: true,
+      aspect: [1, 1],
+      quality: 0.7,
+    });
+
+    if (result.canceled) return;
+
+    const image = result.assets[0];
+    setUploading(true);
+
+    const formData = new FormData();
+    formData.append('file', {
+      uri: image.uri,
+      name: `photo.${image.uri.split('.').pop()}`,
+      type: `image/${image.uri.split('.').pop()}`,
+    } as any);
+
+    try {
+      const response = await apiFetch('/figurines/upload', {
+        method: 'POST',
+        body: formData,
+        headers: {
+          // Content-Type'ı elle set etmiyoruz, FormData otomatik ayarlar
+        },
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setForm(prev => ({ ...prev, imageUrl: data.imageUrl }));
+      } else {
+        Alert.alert('Hata', data || 'Fotoğraf yüklenemedi.');
+      }
+    } catch (err) {
+      Alert.alert('Hata', 'Sunucuya bağlanılamadı.');
+    } finally {
+      setUploading(false);
+    }
   };
 
   const handleSave = async () => {
@@ -135,6 +187,13 @@ export default function AdminScreen() {
         <Text style={styles.ordersButtonText}>📋 Sipariş Yönetimi</Text>
       </TouchableOpacity>
 
+      <TouchableOpacity
+        style={[styles.ordersButton, { backgroundColor: '#ff6600' }]}
+        onPress={() => router.push('/admin-coupons')}
+      >
+        <Text style={styles.ordersButtonText}>🎟️ Kupon Yönetimi</Text>
+      </TouchableOpacity>
+
       <FlatList
         data={figurines}
         keyExtractor={item => item.id.toString()}
@@ -170,7 +229,6 @@ export default function AdminScreen() {
             { label: 'Filament Tipi *', key: 'filamentType', placeholder: 'PLA, Reçine...' },
             { label: 'Ölçek *', key: 'scale', placeholder: '1/6, 1/10...' },
             { label: 'Üretim Süresi (saat) *', key: 'printTimeInHours', placeholder: '12', keyboard: 'numeric' },
-            { label: 'Görsel URL', key: 'imageUrl', placeholder: 'https://...' },
           ].map(field => (
             <View key={field.key} style={styles.formGroup}>
               <Text style={styles.label}>{field.label}</Text>
@@ -184,6 +242,38 @@ export default function AdminScreen() {
               />
             </View>
           ))}
+
+          {/* Görsel Seçimi */}
+          <View style={styles.formGroup}>
+            <Text style={styles.label}>Ürün Fotoğrafı</Text>
+
+            {form.imageUrl ? (
+              <View style={styles.imagePreviewContainer}>
+                <Image source={{ uri: form.imageUrl }} style={styles.imagePreview} />
+                <TouchableOpacity
+                  style={styles.changeImageButton}
+                  onPress={pickAndUploadImage}
+                  disabled={uploading}
+                >
+                  <Text style={styles.changeImageButtonText}>
+                    {uploading ? 'Yükleniyor...' : 'Değiştir'}
+                  </Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <TouchableOpacity
+                style={styles.pickImageButton}
+                onPress={pickAndUploadImage}
+                disabled={uploading}
+              >
+                {uploading ? (
+                  <ActivityIndicator color="#ff6600" />
+                ) : (
+                  <Text style={styles.pickImageButtonText}>📷 Fotoğraf Seç</Text>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
 
           <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
             <Text style={styles.saveButtonText}>{editingId ? 'Güncelle' : 'Kaydet'}</Text>
@@ -241,4 +331,15 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   ordersButtonText: { color: '#fff', fontSize: 15, fontWeight: '700' },
+  imagePreviewContainer: { alignItems: 'center' },
+  imagePreview: { width: 150, height: 150, borderRadius: 12, backgroundColor: '#eee', marginBottom: 10 },
+  changeImageButton: {
+    backgroundColor: '#f5f5f5', paddingHorizontal: 16, paddingVertical: 8, borderRadius: 8,
+  },
+  changeImageButtonText: { fontSize: 13, fontWeight: '600', color: '#1a1a1a' },
+  pickImageButton: {
+    backgroundColor: '#fff', borderWidth: 2, borderColor: '#e0e0e0', borderStyle: 'dashed',
+    borderRadius: 12, paddingVertical: 30, alignItems: 'center',
+  },
+  pickImageButtonText: { fontSize: 15, fontWeight: '600', color: '#888' },
 });

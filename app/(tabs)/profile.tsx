@@ -91,18 +91,11 @@ export default function ProfileScreen() {
         // Login olmuş kullanıcı görünümü
         <>
             <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() => router.push('/orders')}
+              style={styles.menuItem}
+              onPress={() => router.navigate('/orders')}
             >
             <Text style={styles.menuItemText}>📦 Siparişlerim</Text>
             <Text style={{ color: '#ff6600', fontSize: 18 }}>→</Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() => router.push('/favorites')}
-            >
-              <Text style={styles.menuItemText}>❤️ Favorilerim</Text>
-              <Text style={{ color: '#ff6600', fontSize: 18 }}>→</Text>
             </TouchableOpacity>
 
             {isAdmin && (

@@ -5,8 +5,10 @@ const BASE_URL = 'http://192.168.1.53:5059';
 export async function apiFetch(endpoint: string, options: RequestInit = {}) {
   const token = await SecureStore.getItemAsync('token');
 
+  const isFormData = options.body instanceof FormData;
+
   const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
+    ...(!isFormData && { 'Content-Type': 'application/json' }),
     ...(options.headers as Record<string, string>),
   };
 
