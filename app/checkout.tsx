@@ -20,6 +20,10 @@ export default function CheckoutScreen() {
   const [applyingCoupon, setApplyingCoupon] = useState(false);
 
   const finalPrice = rawTotal - discountAmount;
+  const [cardNumber, setCardNumber] = useState('');
+  const [cardName, setCardName] = useState('');
+  const [expiryDate, setExpiryDate] = useState('');
+  const [cvv, setCvv] = useState('');
 
   const handleApplyCoupon = async () => {
     if (!couponCode.trim()) return;
@@ -67,6 +71,11 @@ export default function CheckoutScreen() {
       return;
     }
 
+    if (!validateCardInfo()) {
+      return;
+    }
+
+    // Kart bilgileri hiçbir yere gönderilmiyor, sadece doğrulama simülasyonu
     apiFetch('/orders', {
       method: 'POST',
       body: JSON.stringify({
@@ -88,6 +97,53 @@ export default function CheckoutScreen() {
       })
       .catch(() => Alert.alert('Hata', 'Sunucuya bağlanılamadı.'));
   };
+
+  const formatCardNumber = (text: string) => {
+    const cleaned = text.replace(/\D/g, ''); // sadece rakamları al
+    const limited = cleaned.slice(0, 16); // max 16 hane
+    const groups = limited.match(/.{1,4}/g); // 4'lü gruplara böl
+    return groups ? groups.join(' ') : '';
+  };
+
+  const handleCardNumberChange = (text: string) => {
+    setCardNumber(formatCardNumber(text));
+  };
+
+  const formatExpiryDate = (text: string) => {
+    const cleaned = text.replace(/\D/g, '');
+    const limited = cleaned.slice(0, 4);
+    if (limited.length >= 3) {
+      return `${limited.slice(0, 2)}/${limited.slice(2)}`;
+    }
+    return limited;
+  };
+
+  const handleExpiryChange = (text: string) => {
+    setExpiryDate(formatExpiryDate(text));
+  };
+
+  const validateCardInfo = () => {
+    const cleanedCardNumber = cardNumber.replace(/\s/g, '');
+
+    if (cleanedCardNumber.length !== 16) {
+      Alert.alert('Geçersiz Kart', 'Kart numarası 16 haneli olmalıdır.');
+      return false;
+    }
+    if (!cardName.trim()) {
+      Alert.alert('Eksik Bilgi', 'Kart üzerindeki ismi girin.');
+      return false;
+    }
+    if (expiryDate.length !== 5) {
+      Alert.alert('Geçersiz Tarih', 'Son kullanma tarihini AA/YY formatında girin.');
+      return false;
+    }
+    if (cvv.length !== 3) {
+      Alert.alert('Geçersiz CVV', 'CVV 3 haneli olmalıdır.');
+      return false;
+    }
+    return true;
+  };
+    
 
   return (
     <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
@@ -118,6 +174,46 @@ export default function CheckoutScreen() {
           onChangeText={setAddress}
           placeholderTextColor="#bbb"
         />
+
+        <Text style={styles.sectionLabel}>💳 Ödeme Bilgileri</Text>
+
+        <TextInput
+          style={styles.input}
+          placeholder="Kart Üzerindeki İsim"
+          value={cardName}
+          onChangeText={setCardName}
+          autoCapitalize="characters"
+          placeholderTextColor="#bbb"
+        />
+
+        <TextInput
+          style={styles.input}
+          placeholder="1234 5678 9012 3456"
+          value={cardNumber}
+          onChangeText={handleCardNumberChange}
+          keyboardType="numeric"
+          placeholderTextColor="#bbb"
+        />
+
+        <View style={styles.cardRow}>
+          <TextInput
+            style={[styles.input, styles.cardHalfInput]}
+            placeholder="AA/YY"
+            value={expiryDate}
+            onChangeText={handleExpiryChange}
+            keyboardType="numeric"
+            placeholderTextColor="#bbb"
+          />
+          <TextInput
+            style={[styles.input, styles.cardHalfInput]}
+            placeholder="CVV"
+            value={cvv}
+            onChangeText={(text) => setCvv(text.replace(/\D/g, '').slice(0, 3))}
+            keyboardType="numeric"
+            secureTextEntry
+            placeholderTextColor="#bbb"
+          />
+        </View>
 
         {/* KUPON ALANI */}
         <View style={styles.couponContainer}>
@@ -245,4 +341,7 @@ const styles = StyleSheet.create({
   totalPrice: { fontSize: 22, fontWeight: '800', color: '#ff6600' },
   button: { backgroundColor: '#ff6600', paddingVertical: 16, borderRadius: 12, alignItems: 'center' },
   buttonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
+  sectionLabel: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 12, marginTop: 8 },
+  cardRow: { flexDirection: 'row', gap: 12 },
+  cardHalfInput: { flex: 1 },
 });

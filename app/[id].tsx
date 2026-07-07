@@ -4,6 +4,7 @@ import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { apiFetch } from '@/utils/api';
 import * as SecureStore from 'expo-secure-store';
 import { addToLocalCart } from '@/utils/cart';
+import { Alert } from 'react-native';
 
 export default function FigurineDetail() {
   const { id } = useLocalSearchParams();
@@ -85,7 +86,14 @@ export default function FigurineDetail() {
       })
         .then(res => {
           if (res.status === 201) {
-            alert('Ürün sepetinize başarıyla eklendi! 🎉');
+            Alert.alert(
+              '🎉 Sepete Eklendi!',
+              'Ürün sepetinize başarıyla eklendi.',
+              [
+                { text: 'Alışverişe Devam Et', style: 'cancel' },
+                { text: 'Sepete Git', onPress: () => router.navigate('/(tabs)/cart') }
+              ]
+            );
           } else {
             alert('Sepete eklenirken bir hata oluştu.');
           }
@@ -104,7 +112,14 @@ export default function FigurineDetail() {
           imageUrl: figurine.imageUrl || ''
         }
       });
-      alert('Ürün sepetinize eklendi! 🎉');
+      Alert.alert(
+        '🎉 Sepete Eklendi!',
+        'Ürün sepetinize başarıyla eklendi.',
+        [
+          { text: 'Alışverişe Devam Et', style: 'cancel' },
+          { text: 'Sepete Git', onPress: () => router.navigate('/(tabs)/cart') }
+        ]
+      );
     }
   };
 

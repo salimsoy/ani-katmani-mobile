@@ -8,6 +8,7 @@ import { apiFetch } from '@/utils/api';
 import * as ImagePicker from 'expo-image-picker';
 import { Image } from 'react-native';
 
+
 type Figurine = {
   id: number;
   name: string;
@@ -38,16 +39,12 @@ export default function AdminScreen() {
   );
 
   const fetchFigurines = () => {
-    setLoading(true);
     apiFetch('/figurines')
       .then(res => res.json())
-      .then(data => {
-        setFigurines(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      .then(data => setFigurines(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));  // sadece ilk yüklemeyi kapatır
   };
-
   const openAddModal = () => {
     setEditingId(null);
     setForm(emptyForm);
@@ -182,14 +179,14 @@ export default function AdminScreen() {
       {/* Sipariş Yönetimi Butonu - header'ın ALTINDA, tam genişlik */}
       <TouchableOpacity
         style={styles.ordersButton}
-        onPress={() => router.push('/admin-orders')}
+        onPress={() => router.navigate('/admin-orders')}
       >
         <Text style={styles.ordersButtonText}>📋 Sipariş Yönetimi</Text>
       </TouchableOpacity>
 
       <TouchableOpacity
         style={[styles.ordersButton, { backgroundColor: '#ff6600' }]}
-        onPress={() => router.push('/admin-coupons')}
+        onPress={() => router.navigate('/admin-coupons')}
       >
         <Text style={styles.ordersButtonText}>🎟️ Kupon Yönetimi</Text>
       </TouchableOpacity>

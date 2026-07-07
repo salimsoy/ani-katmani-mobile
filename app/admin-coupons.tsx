@@ -28,14 +28,11 @@ export default function AdminCouponsScreen() {
   const [form, setForm] = useState(emptyForm);
 
   const fetchCoupons = () => {
-    setLoading(true);
     apiFetch('/coupons')
       .then(res => res.json())
-      .then(data => {
-        setCoupons(data);
-        setLoading(false);
-      })
-      .catch(() => setLoading(false));
+      .then(data => setCoupons(data))
+      .catch(() => {})
+      .finally(() => setLoading(false)); // sadece ilk yüklemede spinner kapanır
   };
 
   useFocusEffect(

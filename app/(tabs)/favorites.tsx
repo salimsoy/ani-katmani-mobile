@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { apiFetch } from '@/utils/api';
 
@@ -19,6 +19,7 @@ type FavoriteItem = {
 export default function FavoritesScreen() {
   const [favorites, setFavorites] = useState<FavoriteItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [searchText, setSearchText] = useState('');
   const router = useRouter();
 
   const fetchFavorites = () => {
@@ -47,6 +48,12 @@ export default function FavoritesScreen() {
       });
   };
 
+  const filteredFavorites = favorites.filter(item => {
+    const searchLower = searchText.toLowerCase();
+    return item.figurine?.name.toLowerCase().includes(searchLower) ||
+           item.figurine?.filamentType.toLowerCase().includes(searchLower);
+  });
+
   if (loading) {
     return (
       <View style={styles.center}>
@@ -71,42 +78,61 @@ export default function FavoritesScreen() {
   return (
     <View style={styles.container}>
       <Text style={styles.pageTitle}>Favorilerim</Text>
-      <FlatList
-        data={favorites}
-        keyExtractor={item => item.id.toString()}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 40 }}
-        renderItem={({ item }) => (
-          <TouchableOpacity
-            style={styles.card}
-            activeOpacity={0.8}
-            onPress={() => router.push(`/${item.figurineId}`)}
-          >
-            <Image
-              source={{ uri: item.figurine?.imageUrl || 'https://via.placeholder.com/150' }}
-              style={styles.image}
-            />
-            <View style={styles.details}>
-              <Text style={styles.name} numberOfLines={2}>{item.figurine?.name}</Text>
-              <Text style={styles.price}>{item.figurine?.price} ₺</Text>
-              <Text style={styles.meta}>{item.figurine?.filamentType} • {item.figurine?.scale}</Text>
-            </View>
+
+      <View style={styles.searchContainer}>
+        <TextInput
+          style={styles.searchInput}
+          placeholder="Favorilerimde ara..."
+          value={searchText}
+          onChangeText={setSearchText}
+          placeholderTextColor="#bbb"
+        />
+      </View>
+
+      {filteredFavorites.length === 0 ? (
+        <View style={styles.center}>
+          <Text style={styles.emptyEmoji}>🔍</Text>
+          <Text style={styles.emptyText}>Arama sonucu bulunamadı</Text>
+          <Text style={styles.emptySubText}>Farklı bir kelime deneyin</Text>
+        </View>
+      ) : (
+        <FlatList
+          data={filteredFavorites}
+          keyExtractor={item => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ paddingBottom: 40 }}
+          renderItem={({ item }) => (
             <TouchableOpacity
-              style={styles.removeButton}
-              onPress={() => removeFavorite(item.figurineId)}
+              style={styles.card}
+              activeOpacity={0.8}
+              onPress={() => router.push(`/${item.figurineId}`)}
             >
-              <Text style={styles.removeIcon}>❤️</Text>
+              <Image
+                source={{ uri: item.figurine?.imageUrl || 'https://via.placeholder.com/150' }}
+                style={styles.image}
+              />
+              <View style={styles.details}>
+                <Text style={styles.name} numberOfLines={2}>{item.figurine?.name}</Text>
+                <Text style={styles.price}>{item.figurine?.price} ₺</Text>
+                <Text style={styles.meta}>{item.figurine?.filamentType} • {item.figurine?.scale}</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.removeButton}
+                onPress={() => removeFavorite(item.figurineId)}
+              >
+                <Text style={styles.removeIcon}>❤️</Text>
+              </TouchableOpacity>
             </TouchableOpacity>
-          </TouchableOpacity>
-        )}
-      />
+          )}
+        />
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa', paddingHorizontal: 20, paddingTop: 60 },
-  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', paddingHorizontal: 40, paddingTop: 60 },
+  center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', paddingHorizontal: 40 },
   emptyEmoji: { fontSize: 56, marginBottom: 16 },
   emptyText: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 6 },
   emptySubText: { fontSize: 14, color: '#999', textAlign: 'center' },
@@ -125,4 +151,18 @@ const styles = StyleSheet.create({
   removeButton: { padding: 8 },
   removeIcon: { fontSize: 20 },
   pageTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a', marginBottom: 16 },
+  searchContainer: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: '#e0e0e0',
+    elevation: 2,
+  },
+  searchInput: {
+    fontSize: 15,
+    color: '#1a1a1a',
+    paddingVertical: 12,
+  },
 });

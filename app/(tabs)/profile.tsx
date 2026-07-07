@@ -13,25 +13,21 @@ export default function ProfileScreen() {
 
   useEffect(() => {
     SecureStore.getItemAsync('firstName').then(name => {
-        if (name) setFirstName(name);
+      if (name) setFirstName(name);
     });
     SecureStore.getItemAsync('isAdmin').then(val => {
-        if (val === 'true') setIsAdmin(true);
+      if (val === 'true') setIsAdmin(true);
     });
     SecureStore.getItemAsync('token').then(token => {
-        if (!token) {
-            setIsGuest(true);
-            return; // misafirse order çekme
-        }
-        apiFetch('/orders')
-            .then(res => res.json())
-            .then(data => setOrderCount(data.length))
-            .catch(() => {});
+      if (!token) {
+        setIsGuest(true);
+        return;
+      }
+      apiFetch('/orders')
+        .then(res => res.json())
+        .then(data => setOrderCount(data.length))
+        .catch(() => {});
     });
-    apiFetch('/orders')
-      .then(res => res.json())
-      .then(data => setOrderCount(data.length))
-      .catch(() => {});
   }, []);
 
   const handleLogout = async () => {
@@ -73,7 +69,7 @@ export default function ProfileScreen() {
         <>
             <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/login')}
+            onPress={() => router.navigate('/login')}
             >
             <Text style={styles.menuItemText}>🔐 Giriş Yap</Text>
             <Text style={{ color: '#ff6600', fontSize: 18 }}>→</Text>
@@ -81,7 +77,7 @@ export default function ProfileScreen() {
 
             <TouchableOpacity
             style={styles.menuItem}
-            onPress={() => router.push('/register')}
+            onPress={() => router.navigate('/register')}
             >
             <Text style={styles.menuItemText}>✨ Kayıt Ol</Text>
             <Text style={{ color: '#ff6600', fontSize: 18 }}>→</Text>
@@ -101,7 +97,7 @@ export default function ProfileScreen() {
             {isAdmin && (
             <TouchableOpacity
                 style={[styles.menuItem, { backgroundColor: '#1a1a1a' }]}
-                onPress={() => router.push('/admin')}
+                onPress={() => router.navigate('/admin')}
             >
                 <Text style={[styles.menuItemText, { color: '#fff' }]}>⚙️ Admin Paneli</Text>
                 <Text style={{ color: '#ff6600', fontSize: 18 }}>→</Text>

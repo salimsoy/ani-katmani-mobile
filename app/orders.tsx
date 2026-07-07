@@ -1,30 +1,19 @@
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native';
-import { useFocusEffect } from 'expo-router';
+import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native';
+import { useFocusEffect, useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { apiFetch } from '@/utils/api';
 
-type OrderItem = {
-  id: number;
-  figurineId: number;
-  quantity: number;
-  unitPrice: number;
-  figurine: { name: string; imageUrl: string };
-};
-
 type Order = {
   id: number;
-  fullName: string;
-  address: string;
-  phoneNumber: string;
   totalPrice: number;
   status: string;
   createdAt: string;
-  orderItems: OrderItem[];
 };
 
 export default function OrdersScreen() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
+  const router = useRouter();
 
   useFocusEffect(
     useCallback(() => {
@@ -63,7 +52,11 @@ export default function OrdersScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={{ paddingBottom: 40 }}
         renderItem={({ item }) => (
-          <View style={styles.orderCard}>
+          <TouchableOpacity
+            style={styles.orderCard}
+            activeOpacity={0.8}
+            onPress={() => router.navigate(`/order-detail/${item.id}`)}
+          >
             <View style={styles.orderHeader}>
               <Text style={styles.orderId}>Sipariş #{item.id}</Text>
               <View style={styles.statusBadge}>
@@ -77,17 +70,13 @@ export default function OrdersScreen() {
               })}
             </Text>
 
-            {item.orderItems.map(oi => (
-              <Text key={oi.id} style={styles.orderItem}>
-                • {oi.figurine?.name} x{oi.quantity} — {oi.unitPrice * oi.quantity} ₺
-              </Text>
-            ))}
-
             <View style={styles.totalRow}>
               <Text style={styles.totalLabel}>Toplam</Text>
-              <Text style={styles.orderTotal}>{item.totalPrice} ₺</Text>
+              <Text style={styles.orderTotal}>{item.totalPrice.toFixed(2)} ₺</Text>
             </View>
-          </View>
+
+            <Text style={styles.detailLink}>Detayları Gör →</Text>
+          </TouchableOpacity>
         )}
       />
     </View>
@@ -109,8 +98,8 @@ const styles = StyleSheet.create({
   statusBadge: { backgroundColor: '#fff3e0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
   statusText: { fontSize: 12, fontWeight: '600', color: '#ff6600' },
   orderDate: { fontSize: 13, color: '#999', marginBottom: 10 },
-  orderItem: { fontSize: 14, color: '#4a4a4a', marginBottom: 4 },
-  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginTop: 12, paddingTop: 12, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
+  totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
   totalLabel: { fontSize: 14, color: '#999' },
   orderTotal: { fontSize: 18, fontWeight: '800', color: '#1a1a1a' },
+  detailLink: { fontSize: 13, color: '#ff6600', fontWeight: '600', marginTop: 10, textAlign: 'right' },
 });
