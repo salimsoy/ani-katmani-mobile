@@ -2,6 +2,8 @@ import { useState, useCallback } from 'react';
 import { View, Text, FlatList, ActivityIndicator, StyleSheet, Image, TouchableOpacity, TextInput } from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
 import { apiFetch } from '@/utils/api';
+import { Heart, Search } from 'lucide-react-native';
+import EmptyState from '@/components/EmptyState';
 
 type FavoriteItem = {
   id: number;
@@ -13,7 +15,7 @@ type FavoriteItem = {
     filamentType: string;
     scale: string;
     imageUrl: string;
-  };
+  } | null;
 };
 
 export default function FavoritesScreen() {
@@ -66,11 +68,11 @@ export default function FavoritesScreen() {
     return (
       <View style={styles.container}>
         <Text style={styles.pageTitle}>Favorilerim</Text>
-        <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>🤍</Text>
-          <Text style={styles.emptyText}>Henüz favori ürününüz yok</Text>
-          <Text style={styles.emptySubText}>Beğendiğiniz ürünlere kalp ikonuna dokunun</Text>
-        </View>
+        <EmptyState
+          icon={<Heart size={56} color="#ccc" />}
+          title="Henüz favori ürününüz yok"
+          subtitle="Beğendiğiniz ürünlere kalp ikonuna dokunun"
+        />
       </View>
     );
   }
@@ -90,11 +92,11 @@ export default function FavoritesScreen() {
       </View>
 
       {filteredFavorites.length === 0 ? (
-        <View style={styles.center}>
-          <Text style={styles.emptyEmoji}>🔍</Text>
-          <Text style={styles.emptyText}>Arama sonucu bulunamadı</Text>
-          <Text style={styles.emptySubText}>Farklı bir kelime deneyin</Text>
-        </View>
+        <EmptyState
+          icon={<Search size={56} color="#ccc" />}
+          title="Arama sonucu bulunamadı"
+          subtitle="Farklı bir kelime deneyin"
+        />
       ) : (
         <FlatList
           data={filteredFavorites}
@@ -112,15 +114,21 @@ export default function FavoritesScreen() {
                 style={styles.image}
               />
               <View style={styles.details}>
-                <Text style={styles.name} numberOfLines={2}>{item.figurine?.name}</Text>
-                <Text style={styles.price}>{item.figurine?.price} ₺</Text>
-                <Text style={styles.meta}>{item.figurine?.filamentType} • {item.figurine?.scale}</Text>
+                <Text style={styles.name} numberOfLines={2}>
+                  {item.figurine?.name || 'Bu ürün artık mevcut değil'}
+                </Text>
+                {item.figurine && (
+                  <>
+                    <Text style={styles.price}>{item.figurine.price} ₺</Text>
+                    <Text style={styles.meta}>{item.figurine.filamentType} • {item.figurine.scale}</Text>
+                  </>
+                )}
               </View>
               <TouchableOpacity
                 style={styles.removeButton}
                 onPress={() => removeFavorite(item.figurineId)}
               >
-                <Text style={styles.removeIcon}>❤️</Text>
+                <Heart size={20} color="#e74c3c" fill="#e74c3c" />
               </TouchableOpacity>
             </TouchableOpacity>
           )}
@@ -133,9 +141,6 @@ export default function FavoritesScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa', paddingHorizontal: 20, paddingTop: 60 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#f8f9fa', paddingHorizontal: 40 },
-  emptyEmoji: { fontSize: 56, marginBottom: 16 },
-  emptyText: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 6 },
-  emptySubText: { fontSize: 14, color: '#999', textAlign: 'center' },
   card: {
     flexDirection: 'row', backgroundColor: '#fff',
     padding: 12, borderRadius: 16, marginBottom: 12,
@@ -149,7 +154,6 @@ const styles = StyleSheet.create({
   price: { fontSize: 15, fontWeight: '800', color: '#ff6600', marginBottom: 2 },
   meta: { fontSize: 12, color: '#999' },
   removeButton: { padding: 8 },
-  removeIcon: { fontSize: 20 },
   pageTitle: { fontSize: 22, fontWeight: '800', color: '#1a1a1a', marginBottom: 16 },
   searchContainer: {
     backgroundColor: '#fff',

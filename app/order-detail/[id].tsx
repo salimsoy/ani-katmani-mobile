@@ -1,6 +1,7 @@
 import { useState, useCallback } from 'react';
-import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Image } from 'react-native';
-import { useLocalSearchParams, useFocusEffect, Stack } from 'expo-router';
+import { View, Text, ScrollView, ActivityIndicator, StyleSheet, Image, TouchableOpacity } from 'react-native';
+import { useLocalSearchParams, useFocusEffect, useRouter, Stack } from 'expo-router';
+import { AlertCircle, RotateCcw } from 'lucide-react-native';
 import { apiFetch } from '@/utils/api';
 
 type OrderItem = {
@@ -8,6 +9,7 @@ type OrderItem = {
   figurineId: number;
   quantity: number;
   unitPrice: number;
+  status: string;
   figurine: {
     name: string;
     imageUrl: string;
@@ -23,7 +25,6 @@ type Order = {
   phoneNumber: string;
   totalPrice: number;
   discountAmount: number;
-  status: string;
   createdAt: string;
   orderItems: OrderItem[];
 };
@@ -33,10 +34,13 @@ const STATUS_COLORS: Record<string, string> = {
   'Hazırlanıyor': '#2196f3',
   'Kargoda': '#9c27b0',
   'Teslim Edildi': '#27ae60',
+  'İptal Edildi': '#e74c3c',
+  'Sipariş Tamamlandı': '#999',
 };
 
 export default function OrderDetailScreen() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
   const [order, setOrder] = useState<Order | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -81,14 +85,8 @@ export default function OrderDetailScreen() {
       />
 
       <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
-        {/* Durum */}
+        {/* Tarih */}
         <View style={styles.statusCard}>
-          <Text style={styles.statusLabel}>Sipariş Durumu</Text>
-          <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[order.status] || '#999') + '22' }]}>
-            <Text style={[styles.statusText, { color: STATUS_COLORS[order.status] || '#999' }]}>
-              {order.status}
-            </Text>
-          </View>
           <Text style={styles.orderDate}>
             {new Date(order.createdAt).toLocaleDateString('tr-TR', {
               day: 'numeric', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
@@ -107,9 +105,44 @@ export default function OrderDetailScreen() {
             <View style={styles.itemDetails}>
               <Text style={styles.itemName} numberOfLines={2}>{item.figurine?.name}</Text>
               <Text style={styles.itemMeta}>{item.figurine?.filamentType} • {item.figurine?.scale}</Text>
+              <View style={[styles.itemStatusBadge, { backgroundColor: (STATUS_COLORS[item.status] || '#999') + '22' }]}>
+                <Text style={[styles.itemStatusText, { color: STATUS_COLORS[item.status] || '#999' }]}>
+                  {item.status}
+                </Text>
+              </View>
               <View style={styles.itemPriceRow}>
                 <Text style={styles.itemQuantity}>{item.quantity} adet</Text>
                 <Text style={styles.itemPrice}>{(item.unitPrice * item.quantity).toFixed(2)} ₺</Text>
+              </View>
+
+              <View style={styles.itemActionsRow}>
+                <TouchableOpacity
+                  style={styles.itemActionButton}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/complaint-new',
+                      params: { orderItemId: String(item.id), figurineName: item.figurine?.name ?? 'Ürün' },
+                    })
+                  }
+                >
+                  <AlertCircle size={12} color="#999" />
+                  <Text style={styles.itemActionText}>Sorun Bildir</Text>
+                </TouchableOpacity>
+
+                {item.status === 'Teslim Edildi' && (
+                  <TouchableOpacity
+                    style={styles.itemActionButton}
+                    onPress={() =>
+                      router.push({
+                        pathname: '/return-new',
+                        params: { orderItemId: String(item.id), figurineName: item.figurine?.name ?? 'Ürün' },
+                      })
+                    }
+                  >
+                    <RotateCcw size={12} color="#999" />
+                    <Text style={styles.itemActionText}>İade Talebi</Text>
+                  </TouchableOpacity>
+                )}
               </View>
             </View>
           </View>
@@ -167,9 +200,6 @@ const styles = StyleSheet.create({
     shadowColor: '#000', shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.06, shadowRadius: 6, elevation: 2,
   },
-  statusLabel: { fontSize: 13, color: '#999', marginBottom: 8 },
-  statusBadge: { alignSelf: 'flex-start', paddingHorizontal: 12, paddingVertical: 6, borderRadius: 10, marginBottom: 8 },
-  statusText: { fontSize: 14, fontWeight: '700' },
   orderDate: { fontSize: 13, color: '#999' },
 
   sectionTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 10, marginTop: 4 },
@@ -184,7 +214,12 @@ const styles = StyleSheet.create({
   itemDetails: { flex: 1 },
   itemName: { fontSize: 14, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
   itemMeta: { fontSize: 12, color: '#999', marginBottom: 6 },
+  itemStatusBadge: { alignSelf: 'flex-start', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 8, marginBottom: 8 },
+  itemStatusText: { fontSize: 11, fontWeight: '700' },
   itemPriceRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  itemActionsRow: { flexDirection: 'row', gap: 16, marginTop: 8 },
+  itemActionButton: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  itemActionText: { fontSize: 11, fontWeight: '600', color: '#999' },
   itemQuantity: { fontSize: 13, color: '#888' },
   itemPrice: { fontSize: 14, fontWeight: '700', color: '#ff6600' },
 

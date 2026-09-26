@@ -2,11 +2,22 @@ import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity }
 import { useFocusEffect, useRouter } from 'expo-router';
 import { useState, useCallback } from 'react';
 import { apiFetch } from '@/utils/api';
+import { Package } from 'lucide-react-native';
+import EmptyState from '@/components/EmptyState';
+
+const STATUS_COLORS: Record<string, string> = {
+  'Beklemede': '#ff9800',
+  'Hazırlanıyor': '#2196f3',
+  'Kargoda': '#9c27b0',
+  'Teslim Edildi': '#27ae60',
+  'İptal Edildi': '#e74c3c',
+  'Sipariş Tamamlandı': '#999',
+};
 
 type Order = {
   id: number;
   totalPrice: number;
-  status: string;
+  overallStatus: string;
   createdAt: string;
 };
 
@@ -38,9 +49,11 @@ export default function OrdersScreen() {
 
   if (orders.length === 0) {
     return (
-      <View style={styles.center}>
-        <Text style={styles.emptyText}>Henüz hiç sipariş vermediniz.</Text>
-      </View>
+      <EmptyState
+        icon={<Package size={56} color="#ccc" />}
+        title="Henüz hiç sipariş vermediniz"
+        subtitle="Verdiğiniz siparişler burada görünecek"
+      />
     );
   }
 
@@ -59,8 +72,10 @@ export default function OrdersScreen() {
           >
             <View style={styles.orderHeader}>
               <Text style={styles.orderId}>Sipariş #{item.id}</Text>
-              <View style={styles.statusBadge}>
-                <Text style={styles.statusText}>{item.status}</Text>
+              <View style={[styles.statusBadge, { backgroundColor: (STATUS_COLORS[item.overallStatus] || '#999') + '22' }]}>
+                <Text style={[styles.statusText, { color: STATUS_COLORS[item.overallStatus] || '#999' }]}>
+                  {item.overallStatus}
+                </Text>
               </View>
             </View>
 
@@ -86,7 +101,6 @@ export default function OrdersScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa', paddingHorizontal: 20, paddingTop: 16 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  emptyText: { fontSize: 16, color: '#999' },
   orderCard: {
     backgroundColor: '#fff', borderRadius: 16, padding: 16,
     marginBottom: 12, elevation: 2,
@@ -95,8 +109,8 @@ const styles = StyleSheet.create({
   },
   orderHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 6 },
   orderId: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
-  statusBadge: { backgroundColor: '#fff3e0', paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
-  statusText: { fontSize: 12, fontWeight: '600', color: '#ff6600' },
+  statusBadge: { paddingHorizontal: 10, paddingVertical: 4, borderRadius: 8 },
+  statusText: { fontSize: 12, fontWeight: '600' },
   orderDate: { fontSize: 13, color: '#999', marginBottom: 10 },
   totalRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', paddingTop: 10, borderTopWidth: 1, borderTopColor: '#f0f0f0' },
   totalLabel: { fontSize: 14, color: '#999' },

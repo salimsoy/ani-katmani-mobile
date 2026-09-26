@@ -1,15 +1,34 @@
-import { useState, useCallback } from 'react';
-import { View, Text, ActivityIndicator, StyleSheet, Image, TouchableOpacity, KeyboardAvoidingView, Platform, ScrollView } from 'react-native';
+import { useState, useCallback, useEffect } from 'react';
+import {
+  View,
+  Text,
+  ActivityIndicator,
+  StyleSheet,
+  TouchableOpacity,
+  KeyboardAvoidingView,
+  Platform,
+  ScrollView,
+  Alert,
+} from 'react-native';
 import { useFocusEffect, useRouter } from 'expo-router';
-import { apiFetch } from '@/utils/api';
 import * as SecureStore from 'expo-secure-store';
+import { AlertCircle } from 'lucide-react-native';
+
+import { apiFetch } from '@/utils/api';
 import { getLocalCart, updateLocalCartItem, removeFromLocalCart } from '@/utils/cart';
+import { useCart } from '@/context/CartContext';
+
+import CartItemCard from '@/components/CartItemCard';
+import CartEmptyState from '@/components/CartEmptyState';
+import CartSummary from '@/components/CartSummary';
+import GuestLoginPrompt from '@/components/GuestLoginPrompt';
 
 export default function CartScreen() {
   const [cartItems, setCartItems] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [isGuest, setIsGuest] = useState(false);
   const router = useRouter();
+  const { setItemCount } = useCart();
 
   const fetchCart = async () => {
     const token = await SecureStore.getItemAsync('token');
@@ -20,20 +39,20 @@ export default function CartScreen() {
         id: index,
         figurineId: item.figurineId,
         quantity: item.quantity,
-        figurine: item.figurine
+        figurine: item.figurine,
       }));
       setCartItems(formatted);
       setLoading(false);
     } else {
       setIsGuest(false);
       apiFetch('/cart')
-        .then(res => res.json())
-        .then(data => {
+        .then((res) => res.json())
+        .then((data) => {
           setCartItems(data);
           setLoading(false);
         })
-        .catch(err => {
-          console.error("Sepet çekilemedi:", err);
+        .catch((err) => {
+          console.error('Sepet çekilemedi:', err);
           setLoading(false);
         });
     }
@@ -46,9 +65,32 @@ export default function CartScreen() {
     }, [])
   );
 
-  const updateQuantity = async (id: number, figurineId: number, currentQuantity: number, change: number) => {
+  useEffect(() => {
+    const total = cartItems.reduce((sum, item) => sum + item.quantity, 0);
+    setItemCount(total);
+  }, [cartItems, setItemCount]);
+
+  const updateQuantity = async (
+    id: number,
+    figurineId: number,
+    currentQuantity: number,
+    change: number
+  ) => {
     const newQuantity = currentQuantity + change;
+
     if (isGuest) {
+      // Misafir - client-side stok kontrolü
+      if (change > 0) {
+        const item = cartItems.find((c) => c.figurineId === figurineId);
+        const stock = item?.figurine?.stock ?? Infinity;
+        if (newQuantity > stock) {
+          Alert.alert(
+            'Yeterli Stok Yok',
+            `Bu ürün için sadece ${stock} adet stokta var.`
+          );
+          return;
+        }
+      }
       await updateLocalCartItem(figurineId, newQuantity);
       fetchCart();
     } else {
@@ -56,10 +98,28 @@ export default function CartScreen() {
         removeFromCart(id, figurineId);
         return;
       }
-      apiFetch(`/cart/${id}`, {
-        method: 'PUT',
-        body: JSON.stringify({ quantity: newQuantity })
-      }).then(res => { if (res.ok) fetchCart(); });
+
+      try {
+        const res = await apiFetch(`/cart/${id}`, {
+          method: 'PUT',
+          body: JSON.stringify({ quantity: newQuantity }),
+        });
+
+        if (res.ok) {
+          fetchCart();
+        } else {
+          let errorMessage = 'Miktar güncellenemedi.';
+          try {
+            const data = await res.json();
+            errorMessage = data.message || errorMessage;
+          } catch {
+            // JSON parse edilemezse varsayılan mesaj kalır
+          }
+          Alert.alert('Güncellenemedi', errorMessage);
+        }
+      } catch {
+        Alert.alert('Hata', 'Sunucuya bağlanılamadı.');
+      }
     }
   };
 
@@ -68,93 +128,88 @@ export default function CartScreen() {
       await removeFromLocalCart(figurineId);
       fetchCart();
     } else {
-      apiFetch(`/cart/${id}`, { method: 'DELETE' })
-        .then(res => { if (res.ok) fetchCart(); });
+      apiFetch(`/cart/${id}`, { method: 'DELETE' }).then((res) => {
+        if (res.ok) fetchCart();
+      });
     }
   };
 
-  const totalPrice = cartItems.reduce((total, item) => total + (item.figurine?.price * item.quantity), 0);
-
-  if (loading) return (
-    <View style={styles.center}>
-      <ActivityIndicator size="large" color="#ff6600" />
-    </View>
+  const totalPrice = cartItems.reduce(
+    (total, item) => total + (item.figurine?.price ?? 0) * item.quantity,
+    0
   );
 
+  // Sepette stok sorunu var mı?
+  const hasStockIssues = cartItems.some((item) => {
+    const stock = item.figurine?.stock ?? Infinity;
+    return item.quantity > stock;
+  });
+
+  const handleCheckoutPress = () => {
+    if (hasStockIssues) {
+      Alert.alert(
+        'Stok Sorunu',
+        'Sepetinizde stok sorunu olan ürünler var. Devam etmeden önce miktarları düzenleyin veya ürünleri kaldırın.'
+      );
+      return;
+    }
+    router.push({
+      pathname: '/checkout',
+      params: { total: totalPrice.toFixed(2) },
+    });
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.center}>
+        <ActivityIndicator size="large" color="#ff6600" />
+      </View>
+    );
+  }
+
   return (
-    <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+    <KeyboardAvoidingView
+      style={{ flex: 1 }}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+    >
       <View style={styles.container}>
         <Text style={styles.headerTitle}>Sepetim</Text>
 
         {cartItems.length === 0 ? (
-          <View style={styles.center}>
-            <Text style={styles.emptyEmoji}>🛒</Text>
-            <Text style={styles.emptyText}>Sepetiniz şu an boş</Text>
-            <Text style={styles.emptySubText}>Figürlerimize göz atın</Text>
-            <TouchableOpacity style={styles.browseButton} onPress={() => router.push('/(tabs)')}>
-              <Text style={styles.browseButtonText}>Alışverişe Başla</Text>
-            </TouchableOpacity>
-          </View>
+          <CartEmptyState onBrowse={() => router.push('/(tabs)')} />
         ) : (
           <ScrollView showsVerticalScrollIndicator={false}>
-            {cartItems.map((item, index) => (
-              <View key={index} style={styles.cartCard}>
-                <Image
-                  source={{ uri: item.figurine?.imageUrl || 'https://via.placeholder.com/150' }}
-                  style={styles.cartImage}
-                />
-                <View style={styles.cartDetails}>
-                  <Text style={styles.itemName} numberOfLines={2}>{item.figurine?.name}</Text>
-                  <Text style={styles.itemPrice}>{(item.figurine?.price * item.quantity).toFixed(2)} ₺</Text>
-                  <Text style={styles.unitPrice}>{item.figurine?.price} ₺ / adet</Text>
-                  <View style={styles.controlsRow}>
-                    <View style={styles.quantityContainer}>
-                      <TouchableOpacity style={styles.qtyButton} onPress={() => updateQuantity(item.id, item.figurineId, item.quantity, -1)}>
-                        <Text style={styles.qtyButtonText}>−</Text>
-                      </TouchableOpacity>
-                      <Text style={styles.quantityText}>{item.quantity}</Text>
-                      <TouchableOpacity style={styles.qtyButton} onPress={() => updateQuantity(item.id, item.figurineId, item.quantity, 1)}>
-                        <Text style={styles.qtyButtonText}>+</Text>
-                      </TouchableOpacity>
-                    </View>
-                    <TouchableOpacity style={styles.removeButton} onPress={() => removeFromCart(item.id, item.figurineId)}>
-                      <Text style={styles.removeButtonText}>🗑 Kaldır</Text>
-                    </TouchableOpacity>
-                  </View>
-                </View>
-              </View>
+            {cartItems.map((item) => (
+              <CartItemCard
+                key={item.id}
+                item={item}
+                onUpdateQuantity={(change) =>
+                  updateQuantity(item.id, item.figurineId, item.quantity, change)
+                }
+                onRemove={() => removeFromCart(item.id, item.figurineId)}
+              />
             ))}
 
-            <View style={styles.summaryBox}>
-              <Text style={styles.summaryTitle}>Sipariş Özeti</Text>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Ürünler ({cartItems.length})</Text>
-                <Text style={styles.summaryValue}>{totalPrice.toFixed(2)} ₺</Text>
+            <CartSummary itemCount={cartItems.length} totalPrice={totalPrice} />
+
+            {hasStockIssues && (
+              <View style={styles.stockWarningBox}>
+                <AlertCircle size={18} color="#c0392b" />
+                <Text style={styles.stockWarningText}>
+                  Sepetinizde stok sorunu olan ürünler var. Devam etmeden önce miktarları
+                  düzenleyin veya ürünleri kaldırın.
+                </Text>
               </View>
-              <View style={styles.summaryRow}>
-                <Text style={styles.summaryLabel}>Kargo</Text>
-                <Text style={[styles.summaryValue, { color: '#27ae60' }]}>Ücretsiz</Text>
-              </View>
-              <View style={[styles.summaryRow, styles.totalRow]}>
-                <Text style={styles.totalLabel}>Toplam</Text>
-                <Text style={styles.totalPrice}>{totalPrice.toFixed(2)} ₺</Text>
-              </View>
-            </View>
+            )}
 
             {isGuest ? (
-              <View style={styles.guestWarning}>
-                <Text style={styles.guestEmoji}>🔐</Text>
-                <Text style={styles.guestWarningTitle}>Giriş Yapmanız Gerekiyor</Text>
-                <Text style={styles.guestWarningText}>Sipariş verebilmek için hesabınıza giriş yapın.</Text>
-                <TouchableOpacity style={styles.loginButton} onPress={() => router.push('/login')}>
-                  <Text style={styles.loginButtonText}>Giriş Yap</Text>
-                </TouchableOpacity>
-              </View>
+              <GuestLoginPrompt onLogin={() => router.push('/login')} />
             ) : (
               <TouchableOpacity
-                style={styles.checkoutButton}
-                onPress={() => router.push({ pathname: '/checkout', params: { total: totalPrice.toFixed(2) } })}
+                style={[styles.checkoutButton, hasStockIssues && styles.checkoutButtonDisabled]}
+                onPress={handleCheckoutPress}
                 activeOpacity={0.8}
+                disabled={hasStockIssues}
               >
                 <Text style={styles.checkoutButtonText}>Siparişi Onayla →</Text>
               </TouchableOpacity>
@@ -171,38 +226,31 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#f8f9fa', paddingTop: 60, paddingHorizontal: 20 },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
   headerTitle: { fontSize: 28, fontWeight: '800', color: '#1a1a1a', marginBottom: 20 },
-  emptyEmoji: { fontSize: 64, marginBottom: 16 },
-  emptyText: { fontSize: 22, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
-  emptySubText: { fontSize: 15, color: '#999', marginBottom: 24 },
-  browseButton: { backgroundColor: '#ff6600', paddingVertical: 14, paddingHorizontal: 32, borderRadius: 12 },
-  browseButtonText: { color: '#fff', fontSize: 16, fontWeight: '700' },
-  cartCard: { flexDirection: 'row', backgroundColor: '#fff', padding: 14, borderRadius: 16, marginBottom: 12, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-  cartImage: { width: 85, height: 85, borderRadius: 12, backgroundColor: '#eee', marginRight: 14 },
-  cartDetails: { flex: 1, justifyContent: 'center' },
-  itemName: { fontSize: 14, fontWeight: '700', color: '#1a1a1a', marginBottom: 2 },
-  itemPrice: { fontSize: 16, fontWeight: '800', color: '#ff6600', marginBottom: 2 },
-  unitPrice: { fontSize: 11, color: '#bbb', marginBottom: 8 },
-  controlsRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
-  quantityContainer: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#f5f5f5', borderRadius: 8, padding: 2 },
-  qtyButton: { width: 30, height: 30, justifyContent: 'center', alignItems: 'center', backgroundColor: '#fff', borderRadius: 6, elevation: 1 },
-  qtyButtonText: { fontSize: 18, fontWeight: 'bold', color: '#1a1a1a' },
-  quantityText: { fontSize: 15, fontWeight: '700', minWidth: 30, textAlign: 'center' },
-  removeButton: { paddingHorizontal: 8, paddingVertical: 4 },
-  removeButtonText: { color: '#e74c3c', fontSize: 12, fontWeight: '600' },
-  summaryBox: { backgroundColor: '#fff', borderRadius: 16, padding: 16, marginBottom: 20, marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-  summaryTitle: { fontSize: 16, fontWeight: '700', color: '#1a1a1a', marginBottom: 12 },
-  summaryRow: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  summaryLabel: { fontSize: 14, color: '#888' },
-  summaryValue: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-  totalRow: { borderTopWidth: 1, borderTopColor: '#f0f0f0', paddingTop: 12, marginTop: 4 },
-  totalLabel: { fontSize: 16, fontWeight: '700', color: '#1a1a1a' },
-  totalPrice: { fontSize: 20, fontWeight: '800', color: '#ff6600' },
-  checkoutButton: { backgroundColor: '#ff6600', paddingVertical: 16, borderRadius: 12, alignItems: 'center', marginTop: 8 },
+  stockWarningBox: {
+    flexDirection: 'row',
+    gap: 10,
+    alignItems: 'flex-start',
+    backgroundColor: '#fdecea',
+    borderWidth: 1,
+    borderColor: '#f5c6cb',
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 12,
+  },
+  stockWarningText: {
+    flex: 1,
+    fontSize: 13,
+    color: '#c0392b',
+    lineHeight: 18,
+    fontWeight: '600',
+  },
+  checkoutButton: {
+    backgroundColor: '#ff6600',
+    paddingVertical: 16,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  checkoutButtonDisabled: { backgroundColor: '#bbb' },
   checkoutButtonText: { color: '#fff', fontSize: 17, fontWeight: 'bold' },
-  guestWarning: { backgroundColor: '#fff', padding: 24, borderRadius: 20, alignItems: 'center', marginTop: 8, shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.06, shadowRadius: 6, elevation: 2 },
-  guestEmoji: { fontSize: 40, marginBottom: 12 },
-  guestWarningTitle: { fontSize: 18, fontWeight: '700', color: '#1a1a1a', marginBottom: 8 },
-  guestWarningText: { fontSize: 14, color: '#888', textAlign: 'center', marginBottom: 20, lineHeight: 20 },
-  loginButton: { backgroundColor: '#ff6600', paddingVertical: 14, paddingHorizontal: 40, borderRadius: 12 },
-  loginButtonText: { color: '#fff', fontSize: 16, fontWeight: 'bold' }
 });

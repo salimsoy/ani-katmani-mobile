@@ -13,6 +13,7 @@ import {
 import { useRouter } from 'expo-router';
 import * as SecureStore from 'expo-secure-store';
 import { getLocalCart, clearLocalCart } from '@/utils/cart';
+import { apiFetch } from '@/utils/api';
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -38,9 +39,10 @@ export default function LoginScreen() {
       if (response.ok) {
         const data = await response.json();
         await SecureStore.setItemAsync('token', data.token);
+        await SecureStore.setItemAsync('refreshToken', data.refreshToken);
         await SecureStore.setItemAsync('userId', data.id.toString());
         await SecureStore.setItemAsync('firstName', data.firstName);
-        await SecureStore.setItemAsync('isAdmin', data.isAdmin.toString());
+        
 
         // Local sepeti backend'e merge et
         const localCart = await getLocalCart();
@@ -64,20 +66,38 @@ export default function LoginScreen() {
         }
 
         router.replace('/(tabs)');
-        }else {
-        Alert.alert('Hata', 'Email veya şifre hatalı.');
-      }
+        } else {
+          // Backend'in döndüğü mesajı okumayı dene (hesap kilitleme vb.)
+          let message = 'Email veya şifre hatalı.';
+          try {
+            const errorData = await response.json();
+            if (errorData?.message) {
+              message = errorData.message;
+            }
+          } catch {
+            // Gövde JSON değilse ya da boşsa varsayılan mesajda kal
+          }
+
+          if (response.status === 429) {
+            Alert.alert(
+              'Çok Fazla Deneme',
+              'Çok fazla giriş denemesi yaptınız. Lütfen birkaç dakika sonra tekrar deneyin.'
+            );
+          } else {
+            Alert.alert('Hata', message);
+          }
+        }
     } catch (err) {
       Alert.alert('Bağlantı Hatası', 'Sunucuya bağlanılamadı.');
     } finally {
       setLoading(false);
     }
   };
-
-    const handleGuestLogin = async () => {
-        await SecureStore.setItemAsync('isGuest', 'true');
-        router.replace('/(tabs)');
-    };
+  
+  const handleGuestLogin = async () => {
+      await SecureStore.setItemAsync('isGuest', 'true');
+      router.replace('/(tabs)');
+  };
   return (
     <KeyboardAvoidingView
       style={styles.container}

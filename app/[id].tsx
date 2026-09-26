@@ -1,29 +1,46 @@
 import { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, ActivityIndicator, TouchableOpacity, ScrollView } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  ScrollView,
+} from 'react-native';
 import { useLocalSearchParams, Stack, useRouter } from 'expo-router';
 import { apiFetch } from '@/utils/api';
 import * as SecureStore from 'expo-secure-store';
-import { addToLocalCart } from '@/utils/cart';
-import { Alert } from 'react-native';
+
+import StockBadge from '@/components/StockBadge';
+import QuantitySelector from '@/components/QuantitySelector';
+import ProductGallery from '@/components/ProductGallery';
+import ProductInfoBox from '@/components/ProductInfoBox';
+import AddToCartBar from '@/components/AddToCartBar';
+import { useAddToCart } from '@/hooks/useAddToCart';
 
 export default function FigurineDetail() {
   const { id } = useLocalSearchParams();
+  const router = useRouter();
+
   const [figurine, setFigurine] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
+  const [activeImageIndex, setActiveImageIndex] = useState(0);
   const [isFavorite, setIsFavorite] = useState(false);
   const [favoriteLoading, setFavoriteLoading] = useState(false);
-  const router = useRouter();
+
+  const { addToCart, adding } = useAddToCart();
 
   useEffect(() => {
+    setQuantity(1);
+    setActiveImageIndex(0);
     apiFetch(`/figurines/${id}`)
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setFigurine(data);
         setLoading(false);
       })
-      .catch(err => {
-        console.error("Detay çekilemedi:", err);
+      .catch((err) => {
+        console.error('Detay çekilemedi:', err);
         setLoading(false);
       });
 
@@ -35,8 +52,8 @@ export default function FigurineDetail() {
     if (!token) return;
 
     apiFetch('/favorites')
-      .then(res => res.json())
-      .then(favorites => {
+      .then((res) => res.json())
+      .then((favorites) => {
         const found = favorites.some((f: any) => f.figurineId === Number(id));
         setIsFavorite(found);
       })
@@ -45,7 +62,6 @@ export default function FigurineDetail() {
 
   const toggleFavorite = async () => {
     const token = await SecureStore.getItemAsync('token');
-
     if (!token) {
       router.push('/login');
       return;
@@ -55,7 +71,7 @@ export default function FigurineDetail() {
 
     if (isFavorite) {
       apiFetch(`/favorites/${id}`, { method: 'DELETE' })
-        .then(res => {
+        .then((res) => {
           if (res.ok) setIsFavorite(false);
           setFavoriteLoading(false);
         })
@@ -63,9 +79,9 @@ export default function FigurineDetail() {
     } else {
       apiFetch('/favorites', {
         method: 'POST',
-        body: JSON.stringify({ figurineId: Number(id) })
+        body: JSON.stringify({ figurineId: Number(id) }),
       })
-        .then(res => {
+        .then((res) => {
           if (res.ok) setIsFavorite(true);
           setFavoriteLoading(false);
         })
@@ -73,54 +89,20 @@ export default function FigurineDetail() {
     }
   };
 
-  const addToCart = async () => {
-    const token = await SecureStore.getItemAsync('token');
-
-    if (token) {
-      apiFetch('/cart', {
-        method: 'POST',
-        body: JSON.stringify({
-          figurineId: Number(id),
-          quantity: quantity
-        }),
-      })
-        .then(res => {
-          if (res.status === 201) {
-            Alert.alert(
-              '🎉 Sepete Eklendi!',
-              'Ürün sepetinize başarıyla eklendi.',
-              [
-                { text: 'Alışverişe Devam Et', style: 'cancel' },
-                { text: 'Sepete Git', onPress: () => router.navigate('/(tabs)/cart') }
-              ]
-            );
-          } else {
-            alert('Sepete eklenirken bir hata oluştu.');
-          }
-        })
-        .catch(() => alert('Sunucuya bağlanılamadı.'));
-    } else {
-      await addToLocalCart({
-        figurineId: Number(id),
-        quantity: quantity,
-        figurine: {
-          id: figurine.id,
-          name: figurine.name,
-          price: figurine.price,
-          filamentType: figurine.filamentType,
-          scale: figurine.scale,
-          imageUrl: figurine.imageUrl || ''
-        }
-      });
-      Alert.alert(
-        '🎉 Sepete Eklendi!',
-        'Ürün sepetinize başarıyla eklendi.',
-        [
-          { text: 'Alışverişe Devam Et', style: 'cancel' },
-          { text: 'Sepete Git', onPress: () => router.navigate('/(tabs)/cart') }
-        ]
-      );
-    }
+  const handleAddToCart = () => {
+    if (!figurine) return;
+    addToCart(
+      {
+        id: figurine.id,
+        name: figurine.name,
+        price: figurine.price,
+        filamentType: figurine.filamentType,
+        scale: figurine.scale,
+        imageUrl: figurine.imageUrl || '',
+        stock: figurine.stock ?? 0,
+      },
+      quantity
+    );
   };
 
   if (loading) {
@@ -139,98 +121,74 @@ export default function FigurineDetail() {
     );
   }
 
+  const galleryImages: string[] = [
+    figurine.imageUrl || 'https://via.placeholder.com/500x500?text=Resim+Yok',
+    ...(figurine.images ?? []).map((img: any) => img.imageUrl),
+  ];
+
+  const stock = figurine.stock ?? 0;
+  const outOfStock = stock === 0;
+
   return (
     <View style={styles.container}>
       <Stack.Screen
         options={{
           title: 'Ürün Detayı',
           headerBackTitle: 'Geri',
-          headerTintColor: '#ff6600'
+          headerTintColor: '#ff6600',
         }}
       />
 
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={{ paddingBottom: 100 }}
-      >
-        {/* Ürün Görseli + Favori Butonu */}
-        <View style={styles.imageContainer}>
-          <Image
-            source={{ uri: figurine.imageUrl || 'https://via.placeholder.com/500x500?text=Resim+Yok' }}
-            style={styles.image}
-            resizeMode="cover"
-          />
-          <TouchableOpacity
-            style={styles.favoriteButton}
-            onPress={toggleFavorite}
-            disabled={favoriteLoading}
-          >
-            <Text style={styles.favoriteIcon}>{isFavorite ? '❤️' : '🤍'}</Text>
-          </TouchableOpacity>
-        </View>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
+        <ProductGallery
+          images={galleryImages}
+          activeIndex={activeImageIndex}
+          onActiveIndexChange={setActiveImageIndex}
+          isFavorite={isFavorite}
+          favoriteLoading={favoriteLoading}
+          onToggleFavorite={toggleFavorite}
+          outOfStock={outOfStock}
+        />
 
         <View style={styles.detailsContainer}>
-          {/* Kategori Badge */}
           <View style={styles.categoryBadge}>
             <Text style={styles.categoryBadgeText}>{figurine.filamentType}</Text>
           </View>
 
           <Text style={styles.name}>{figurine.name}</Text>
-
           <Text style={styles.price}>{figurine.price} ₺</Text>
+
+          <View style={{ marginTop: 8, marginBottom: 16 }}>
+            <StockBadge stock={stock} />
+          </View>
 
           <View style={styles.divider} />
 
-          {/* Adet Seçici */}
           <View style={styles.quantityContainer}>
             <Text style={styles.quantityLabel}>Adet</Text>
-            <View style={styles.quantityControls}>
-              <TouchableOpacity
-                style={styles.qtyButton}
-                onPress={() => setQuantity(q => Math.max(1, q - 1))}
-              >
-                <Text style={styles.qtyButtonText}>−</Text>
-              </TouchableOpacity>
-              <Text style={styles.qtyValue}>{quantity}</Text>
-              <TouchableOpacity
-                style={styles.qtyButton}
-                onPress={() => setQuantity(q => q + 1)}
-              >
-                <Text style={styles.qtyButtonText}>+</Text>
-              </TouchableOpacity>
-            </View>
+            <QuantitySelector
+              quantity={quantity}
+              maxQuantity={stock}
+              disabled={outOfStock}
+              onChange={setQuantity}
+            />
           </View>
 
-          {/* Üretim Teknik Detayları */}
-          <View style={styles.infoBox}>
-            <Text style={styles.infoBoxTitle}>Ürün Detayları</Text>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>🛠 Malzeme</Text>
-              <Text style={styles.infoValue}>{figurine.filamentType}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>📐 Ölçek</Text>
-              <Text style={styles.infoValue}>{figurine.scale}</Text>
-            </View>
-            <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>⏱ Üretim Süresi</Text>
-              <Text style={styles.infoValue}>{figurine.printTimeInHours} Saat</Text>
-            </View>
-          </View>
+          <ProductInfoBox
+            filamentType={figurine.filamentType}
+            scale={figurine.scale}
+            printTimeInHours={figurine.printTimeInHours}
+          />
         </View>
       </ScrollView>
 
-      {/* Alt Sabit Sepete Ekle Barı */}
-      <View style={styles.bottomBar}>
-        <View>
-          <Text style={styles.bottomBarLabel}>Toplam</Text>
-          <Text style={styles.bottomBarPrice}>{(figurine.price * quantity).toFixed(2)} ₺</Text>
-          <Text style={styles.bottomBarCalc}>{quantity} x {figurine.price} ₺</Text>
-        </View>
-        <TouchableOpacity style={styles.button} activeOpacity={0.8} onPress={addToCart}>
-          <Text style={styles.buttonText}>Sepete Ekle</Text>
-        </TouchableOpacity>
-      </View>
+      <AddToCartBar
+        price={figurine.price}
+        quantity={quantity}
+        outOfStock={outOfStock}
+        adding={adding}
+        onAdd={handleAddToCart}
+      />
     </View>
   );
 }
@@ -239,38 +197,19 @@ const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#ffffff' },
   center: { flex: 1, justifyContent: 'center', alignItems: 'center' },
 
-  imageContainer: { position: 'relative' },
-  image: { width: '100%', height: 380, backgroundColor: '#eeeeee' },
-  favoriteButton: {
-    position: 'absolute',
-    top: 16, right: 16,
-    width: 44, height: 44,
-    borderRadius: 22,
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    justifyContent: 'center', alignItems: 'center',
-    elevation: 3,
-    shadowColor: '#000', shadowOffset: { width: 0, height: 2 }, shadowOpacity: 0.15, shadowRadius: 4,
-  },
-  favoriteIcon: { fontSize: 22 },
-
   detailsContainer: { padding: 24 },
   name: { fontSize: 26, fontWeight: '800', color: '#1a1a1a', marginBottom: 8 },
+  price: { fontSize: 26, fontWeight: '800', color: '#1a1a1a' },
 
   categoryBadge: {
     alignSelf: 'flex-start',
     backgroundColor: '#fff3e8',
-    paddingHorizontal: 10, paddingVertical: 4,
-    borderRadius: 8, marginBottom: 10,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 8,
+    marginBottom: 10,
   },
   categoryBadgeText: { fontSize: 12, fontWeight: '700', color: '#ff6600' },
-
-  stockRow: { flexDirection: 'row', alignItems: 'center', marginBottom: 12 },
-  stockDot: { width: 8, height: 8, borderRadius: 4, backgroundColor: '#27ae60', marginRight: 6 },
-  stockText: { fontSize: 13, color: '#27ae60', fontWeight: '600' },
-
-  priceRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, marginBottom: 16 },
-  price: { fontSize: 26, fontWeight: '800', color: '#1a1a1a' },
-  priceNote: { fontSize: 12, color: '#999' },
 
   divider: { height: 1, backgroundColor: '#f0f0f0', marginBottom: 16 },
 
@@ -281,48 +220,4 @@ const styles = StyleSheet.create({
     marginBottom: 20,
   },
   quantityLabel: { fontSize: 16, fontWeight: '600', color: '#1a1a1a' },
-  quantityControls: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#f5f5f5',
-    borderRadius: 10,
-    padding: 4,
-  },
-  qtyButton: {
-    width: 36, height: 36,
-    justifyContent: 'center', alignItems: 'center',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    elevation: 1,
-  },
-  qtyButtonText: { fontSize: 20, fontWeight: 'bold', color: '#1a1a1a' },
-  qtyValue: { fontSize: 18, fontWeight: '700', minWidth: 40, textAlign: 'center' },
-
-  infoBox: {
-    backgroundColor: '#f8f9fa',
-    padding: 16, borderRadius: 12,
-    borderWidth: 1, borderColor: '#eeeeee'
-  },
-  infoBoxTitle: { fontSize: 14, fontWeight: '700', color: '#1a1a1a', marginBottom: 10 },
-  infoRow: { flexDirection: 'row', justifyContent: 'space-between', paddingVertical: 6 },
-  infoLabel: { fontSize: 14, color: '#888' },
-  infoValue: { fontSize: 14, fontWeight: '600', color: '#1a1a1a' },
-
-  bottomBar: {
-    position: 'absolute', bottom: 0, left: 0, right: 0,
-    backgroundColor: '#fff',
-    flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center',
-    paddingHorizontal: 20, paddingVertical: 16,
-    borderTopWidth: 1, borderTopColor: '#f0f0f0',
-    elevation: 10,
-  },
-  bottomBarLabel: { fontSize: 12, color: '#999' },
-  bottomBarPrice: { fontSize: 20, fontWeight: '800', color: '#1a1a1a' },
-  button: {
-    backgroundColor: '#1a1a1a',
-    paddingVertical: 14, paddingHorizontal: 28,
-    borderRadius: 12,
-  },
-  buttonText: { color: '#ffffff', fontSize: 16, fontWeight: 'bold' },
-  bottomBarCalc: { fontSize: 11, color: '#bbb', marginTop: 2 },
 });
