@@ -19,7 +19,6 @@
 - **Checkout:** Ayrı teslimat bilgileri sayfası
 - **Sipariş geçmişi:** Durum takibi (Beklemede / Hazırlanıyor / Kargoda / Teslim Edildi)
 - **Favoriler:** Ürünleri favorilere ekleme/çıkarma
-- **Admin paneli:** Ürün ekleme/düzenleme/silme, sipariş durumu yönetimi (rol tabanlı erişim)
 
 ## Ekran Yapısı
 
@@ -32,9 +31,7 @@ app/
 ├── login.tsx / register.tsx
 ├── checkout.tsx         — teslimat bilgileri
 ├── orders.tsx            — sipariş geçmişi
-├── favorites.tsx         — favori ürünler
-├── admin.tsx              — ürün yönetimi
-└── admin-orders.tsx       — sipariş yönetimi
+└── favorites.tsx         — favori ürünler
 
 ## Kurulum
 
@@ -51,4 +48,4 @@ npx expo start --lan
 
 - Tüm API istekleri `utils/api.ts` içindeki `apiFetch` fonksiyonu üzerinden geçer — token varsa otomatik `Authorization` header'ı eklenir
 - Misafir sepeti `utils/cart.ts` ile AsyncStorage'da tutulur, login olunca backend'e merge edilir
-- Rol tabanlı erişim: admin ekranları backend'den dönen `isAdmin` bilgisine göre koşullu render edilir
+- Yönetim ve satıcı panelleri yalnızca web uygulamasında (ani-katmani-web) bulunur
