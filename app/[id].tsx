@@ -15,6 +15,7 @@ import QuantitySelector from '@/components/QuantitySelector';
 import ProductGallery from '@/components/ProductGallery';
 import ProductInfoBox from '@/components/ProductInfoBox';
 import AddToCartBar from '@/components/AddToCartBar';
+import ProductReviews from '@/components/ProductReviews';
 import { useAddToCart } from '@/hooks/useAddToCart';
 
 export default function FigurineDetail() {
@@ -179,6 +180,8 @@ export default function FigurineDetail() {
             scale={figurine.scale}
             printTimeInHours={figurine.printTimeInHours}
           />
+
+          <ProductReviews figurineId={Number(id)} />
         </View>
       </ScrollView>
 
